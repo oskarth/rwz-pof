@@ -64,6 +64,30 @@ On a MacBook Pro 2021 (M1 Max, 64GB) `cargo run --release` takes ~2m (incl compi
 
 Currently total cycle count is ~23M. A secp256k1 signature verification is ~500k cycles (? source needed). Most expensive part is most likely serialization/deserialization.
 
+## Sequence diagram
+
+```mermaid
+sequenceDiagram
+    participant BB as Buyer/Bank
+    participant LB1 as LendingBank1
+    participant LB2 as LendingBank2
+    participant ZK as ZKProof
+    participant SB as Seller/Board
+
+    BB->>LB1: Request signature for amount X
+    LB1-->>BB: Sign(amount=X, deal_id, buyer)
+    BB->>LB2: Request signature for amount Y
+    LB2-->>BB: Sign(amount=Y, deal_id, buyer)
+
+    Note over BB,ZK: BB runs host program
+    BB->>ZK: Prove(LB1.sig, LB2.sig, total≥Z)
+    ZK-->>BB: proof
+
+    BB->>SB: Submit proof
+    Note over SB: Verify:<br/>1. Signatures valid<br/>2. LBs authorized<br/>3. Total ≥ required
+    SB-->>BB: Verified/Rejected
+```
+
 ## TODO
 - Integrate with glue code (e.g. UI)
 - Replace deterministic test keys with separate generation
