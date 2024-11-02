@@ -69,10 +69,34 @@ fn main() {
     // creates an ExecutorEnvBuilder. When you're done adding input, call
     // ExecutorEnvBuilder::build().
 
-    // For example:
-    let input: u32 = 15 * u32::pow(2, 27) + 1;
+    // Generate keys for our two lending banks
+    let lb1_key = SigningKey::random(&mut OsRng);
+    let lb2_key = SigningKey::random(&mut OsRng);
+
+    // Create signed messages for a deal requiring 60 total
+    let lb1_signed = create_signed_message(
+        &lb1_key,
+        50, // LB1 provides 50
+        "DEAL123".to_string(),
+        "buyer123".to_string(),
+    );
+
+    let lb2_signed = create_signed_message(
+        &lb2_key,
+        30, // LB2 provides 30
+        "DEAL123".to_string(),
+        "buyer123".to_string(),
+    );
+
+    let proof_amount = 60u64; // We want to prove we have at least 60
+
+    // Create executor environment with our inputs
     let env = ExecutorEnv::builder()
-        .write(&input)
+        .write(&lb1_signed)
+        .unwrap()
+        .write(&lb2_signed)
+        .unwrap()
+        .write(&proof_amount)
         .unwrap()
         .build()
         .unwrap();
@@ -80,27 +104,24 @@ fn main() {
     // Obtain the default prover.
     let prover = default_prover();
 
+    // Generate the proof
+    println!("Starting proof generation...");
     // Proof information by proving the specified ELF binary.
     // This struct contains the receipt along with statistics about execution of the guest
     let prove_info = prover.prove(env, RWZ_POF_GUEST_ELF).unwrap();
-
-    // extract the receipt.
     let receipt = prove_info.receipt;
 
-    // TODO: Implement code for retrieving receipt journal here.
+    // Read the journal outputs - just the deal info and proved amount
+    let (deal_info, verified_amount): (DealInfo, u64) = receipt.journal.decode().unwrap();
 
-    // For example:
-    let output: u32 = receipt.journal.decode().unwrap();
-
-    // Print, notice, after committing to a journal, the private input became public
-    println!(
-        "Hello, world! I generated a proof of guest execution! {} is a public output from journal ",
-        output
-    );
+    println!("Proof generated successfully!");
+    println!("Verified deal info: {:?}", deal_info);
+    println!("Verified amount: {}", verified_amount);
 
     // The receipt was verified at the end of proving, but the below code is an
     // example of how someone else could verify this receipt.
     receipt.verify(RWZ_POF_GUEST_ID).unwrap();
+    println!("Receipt verification successful!");
 }
 
 #[cfg(test)]
