@@ -4,16 +4,16 @@ A RISC0 ZKVM-based system that provides zero-knowledge verification of lending b
 
 ## Context
 
-In M&A deals, buyers need to prove to the Seller/Seller's Board (S/SB) that they have acquired the necessary financing to complete a deal. Traditionally, this involves naming the lending banks that have committed to providing the financing. However, revealing the identities of committed banks can disadvantage the buyer - if S/SB prefers another buyer who is struggling to secure financing, they could share these bank names with their preferred buyer.
+In M&A auctions, buyers need to prove to the Seller/Seller's Bank (S/SB) that they have acquired the necessary financing to complete a deal. Traditionally, this involves naming the lending banks that have committed to providing the financing. However, revealing the identities of committed banks can disadvantage the buyer - if S/SB prefers another buyer who is struggling to secure financing, they could share these bank names with their preferred buyer.
 
 ## Goal
 
-Provide assurance to the S/SB that lending banks within a known network of reputable banks have provided their lending commitments for a deal proposed by a specific Buyer, without revealing the identities of these lending banks.
+Provide assurance to the S/SB that lending banks within a known network of reputable banks have provided their lending commitments for a bid proposed by a specific Buyer, without revealing the identities of these lending banks.
 
 ## Roles & Operations
 
 - **Buyer/Buyer's Bank (BB)**: Runs the host program with access to their lending bank commitments, generates proofs
-- **Seller/Seller's Board (S/SB)**: Verifies the generated proofs using the guest program
+- **Seller/Seller's Bank (S/SB)**: Verifies the generated proofs using the guest program
 - **Lending Banks (LB)**: Provide signed commitments to the buyer
 
 ## Implementation
