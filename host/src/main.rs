@@ -3,11 +3,14 @@
 use k256::ecdsa::signature::Signer;
 use k256::ecdsa::signature::Verifier;
 use k256::ecdsa::{Signature, SigningKey, VerifyingKey};
-use k256::SecretKey;
+use k256::{elliptic_curve::generic_array::GenericArray, SecretKey};
 use methods::{RWZ_POF_GUEST_ELF, RWZ_POF_GUEST_ID};
 use rand_core::OsRng;
 use risc0_zkvm::{default_prover, ExecutorEnv};
 use serde::{Deserialize, Serialize};
+
+// For easier testing with deterministic seed
+const SEED: u64 = 31337;
 
 #[derive(Debug, Serialize, Deserialize)]
 struct DealInfo {
@@ -51,6 +54,16 @@ fn create_signed_message(
     }
 }
 
+fn get_deterministic_signing_key(offset: u64) -> SigningKey {
+    let seed_bytes = (SEED.wrapping_add(offset)).to_le_bytes();
+    let mut key_bytes = [0u8; 32];
+    key_bytes[..8].copy_from_slice(&seed_bytes);
+
+    let generic_bytes = GenericArray::from_slice(&key_bytes);
+    let secret_key = SecretKey::from_bytes(generic_bytes).expect("Invalid key bytes");
+    SigningKey::from(secret_key)
+}
+
 fn main() {
     // Initialize tracing. In order to view logs, run `RUST_LOG=info cargo run`
     tracing_subscriber::fmt()
@@ -70,8 +83,24 @@ fn main() {
     // ExecutorEnvBuilder::build().
 
     // Generate keys for our two lending banks
-    let lb1_key = SigningKey::random(&mut OsRng);
-    let lb2_key = SigningKey::random(&mut OsRng);
+    //let lb1_key = SigningKey::random(&mut OsRng);
+    //let lb2_key = SigningKey::random(&mut OsRng);
+
+    // Use deterministic keys for easier testing
+    let lb1_key = get_deterministic_signing_key(0);
+    let lb2_key = get_deterministic_signing_key(1);
+
+    // For debugging, remove this once confirmed works on host/guest
+    // // Print public keys in the format needed for guest code
+    // println!("\nPublic keys for guest VALID_PUBKEYS:");
+    // println!(
+    //     "LB1 pubkey: {:?}",
+    //     lb1_key.verifying_key().to_sec1_bytes().to_vec()
+    // );
+    // println!(
+    //     "LB2 pubkey: {:?}",
+    //     lb2_key.verifying_key().to_sec1_bytes().to_vec()
+    // );
 
     // Create signed messages for a deal requiring 60 total
     let lb1_signed = create_signed_message(
