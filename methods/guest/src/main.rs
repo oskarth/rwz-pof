@@ -57,6 +57,8 @@ fn verify_signature(signed: &SignedMessage) -> bool {
 }
 
 fn main() {
+    let start = env::cycle_count();
+
     // Read private inputs
     let lb1_signed: SignedMessage = env::read();
     let lb2_signed: SignedMessage = env::read();
@@ -94,6 +96,9 @@ fn main() {
     // Commit the verified deal info and proved amount
     // We'll use LB1's deal info since we verified they match
     env::commit(&(lb1_signed.message, proof_amount));
+
+    let end = env::cycle_count();
+    eprintln!("total_cycle_count: {}", end - start);
 }
 
 #[cfg(test)]
