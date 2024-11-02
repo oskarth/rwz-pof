@@ -1,8 +1,10 @@
-use risc0_zkvm::guest::env;
-
 use k256::ecdsa::signature::Verifier;
-use k256::ecdsa::{Signature, VerifyingKey};
+use k256::ecdsa::{Signature, SigningKey, VerifyingKey};
+use k256::{elliptic_curve::generic_array::GenericArray, SecretKey};
+use risc0_zkvm::guest::env;
 use serde::{Deserialize, Serialize};
+
+const SEED: u64 = 31337;
 
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
 struct DealInfo {
@@ -18,19 +20,31 @@ struct SignedMessage {
     signature: Vec<u8>,
 }
 
-// TODO: Add this logic, requires persisting keys
-// // List of valid lending banks public keys
-// const VALID_PUBKEYS: [&[u8]; 2] = [
-//     // Add your valid pubkeys here in SEC1 format
-//     &[/* pubkey1 bytes */],
-//     &[/* pubkey2 bytes */],
-// ];
+fn generate_deterministic_pubkey(offset: u64) -> Vec<u8> {
+    let seed_bytes = (SEED.wrapping_add(offset)).to_le_bytes();
+    let mut key_bytes = [0u8; 32];
+    key_bytes[..8].copy_from_slice(&seed_bytes);
+
+    let generic_bytes = GenericArray::from_slice(&key_bytes);
+    let secret_key = SecretKey::from_bytes(generic_bytes).expect("Invalid key bytes");
+    VerifyingKey::from(SigningKey::from(secret_key))
+        .to_sec1_bytes()
+        .to_vec()
+}
+
+fn get_valid_pubkeys() -> [Vec<u8>; 2] {
+    [
+        generate_deterministic_pubkey(0), // LB1
+        generate_deterministic_pubkey(1), // LB2
+    ]
+}
 
 fn verify_signature(signed: &SignedMessage) -> bool {
-    // // First verify the pubkey is in our valid set
-    // if !VALID_PUBKEYS.contains(&&*signed.pubkey) {
-    //     return false;
-    // }
+    // Get valid pubkeys and check if the signature's pubkey is in our set
+    let valid_pubkeys = get_valid_pubkeys();
+    if !valid_pubkeys.contains(&signed.pubkey) {
+        return false;
+    }
 
     let verifying_key =
         VerifyingKey::from_sec1_bytes(&signed.pubkey).expect("Invalid public key format");
@@ -88,6 +102,16 @@ mod tests {
     use k256::ecdsa::SigningKey;
     use rand_core::OsRng;
 
+    fn get_test_signing_key(offset: u64) -> SigningKey {
+        let seed_bytes = (SEED.wrapping_add(offset)).to_le_bytes();
+        let mut key_bytes = [0u8; 32];
+        key_bytes[..8].copy_from_slice(&seed_bytes);
+
+        let generic_bytes = GenericArray::from_slice(&key_bytes);
+        let secret_key = SecretKey::from_bytes(generic_bytes).expect("Invalid key bytes");
+        SigningKey::from(secret_key)
+    }
+
     fn create_test_signed_message(
         signing_key: &SigningKey,
         amount: u64,
@@ -141,5 +165,20 @@ mod tests {
         signed_msg.pubkey = VerifyingKey::from(&wrong_key).to_sec1_bytes().to_vec();
 
         assert!(!verify_signature(&signed_msg));
+    }
+
+    #[test]
+    fn test_verify_invalid_signature() {
+        // Generate a key with different seed/offset
+        let invalid_key = get_test_signing_key(999);
+
+        let invalid_msg = create_test_signed_message(
+            &invalid_key,
+            500,
+            "DEAL001".to_string(),
+            "buyer1".to_string(),
+        );
+
+        assert!(!verify_signature(&invalid_msg));
     }
 }
