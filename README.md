@@ -46,9 +46,28 @@ cargo run --release
 RISC0_DEV_MODE=true cargo run --release
 ```
 
+### Expected output
+
+```
+Starting proof generation...
+total_cycle_count: 22955819
+
+Proof generated successfully!
+Verified deal info: DealInfo { amount: 50, deal_id: "DEAL123", buyer: "buyer123" }
+Verified amount: 60
+Receipt verification successful!
+```
+
+## Performance notes
+
+On a MacBook Pro 2021 (M1 Max, 64GB) `cargo run --release` takes ~2m (incl compile). This is without any form of customization or performance work.
+
+Currently total cycle count is ~23M. A secp256k1 signature verification is ~500k cycles (? source needed). Most expensive part is most likely serialization/deserialization.
+
 ## TODO
 - Integrate with glue code (e.g. UI)
 - Replace deterministic test keys with separate generation
 - Allow for more than two LBs
 - Implement comprehensive testing, error handling, and input validation
 - Experiment with remote proving capabilities
+- Improve performance
