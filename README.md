@@ -89,7 +89,7 @@ sequenceDiagram
 ```
 
 ## TODO
-- Integrate with glue code (e.g. UI)
+- Integrate with glue code (e.g. UI); see [PLAN.md](PLAN.md)
 - Replace deterministic test keys with separate generation
 - Allow for more than two LBs
 - Implement comprehensive testing, error handling, and input validation
