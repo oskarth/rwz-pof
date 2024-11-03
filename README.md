@@ -25,6 +25,7 @@ Provide assurance to the S/SB that lending banks within a known network of reput
   - Creates zero-knowledge proofs
 - **Guest Program** (methods/guest/src/main.rs)
   - Verifies signatures are from authorized banks
+  - Verifies public keys are unique so that signatures cannot be repeated
   - Validates total committed amount meets requirements
   - Commits verified deal info to journal
 
