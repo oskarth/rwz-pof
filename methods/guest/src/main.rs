@@ -74,6 +74,9 @@ fn main() {
         "LB2 signature verification failed"
     );
 
+    // Verify public keys are unique so that signatures cannot be repeated
+    assert!(lb1_signed.pubkey != lb2_signed.pubkey);
+
     // Verify both messages refer to the same deal
     assert_eq!(
         lb1_signed.message.deal_id, lb2_signed.message.deal_id,
