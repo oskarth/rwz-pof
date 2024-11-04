@@ -1,10 +1,11 @@
 mod handlers;
 mod storage;
 
-use std::convert::Infallible;
-use warp::Filter;
 use handlers::{handle_commitment, handle_proof, handle_verify};
+use std::convert::Infallible;
+use std::sync::{Arc, Mutex};
 use storage::Storage;
+use warp::Filter;
 
 #[tokio::main]
 async fn main() {
@@ -12,8 +13,8 @@ async fn main() {
     tracing_subscriber::fmt::init();
     println!("Starting RWZ-POF server...");
 
-    // Initialize storage
-    let storage = Storage::new();
+    // Initialize storage with thread-safe wrapper
+    let storage = Arc::new(Mutex::new(Storage::new()));
     let storage_filter = warp::any().map(move || storage.clone());
 
     // POST /lb/commitment

@@ -4,6 +4,7 @@ use rwz_pof_core::{
 };
 use serde::{Deserialize, Serialize};
 use std::convert::Infallible;
+use std::sync::{Arc, Mutex};
 use warp::{reply::json, Reply};
 
 // Request/Response types
@@ -63,7 +64,7 @@ struct ErrorResponse {
 // Handlers
 pub async fn handle_commitment(
     req: CommitmentRequest,
-    mut storage: Storage,
+    storage: Arc<Mutex<Storage>>,
 ) -> Result<impl Reply, Infallible> {
     println!("Handling commitment request: {:?}", req);
 
@@ -71,6 +72,8 @@ pub async fn handle_commitment(
 
     match create_signed_message(&signing_key, req.amount, req.deal_id.clone(), req.buyer) {
         Ok(signed_message) => {
+            // Lock storage for modification
+            let mut storage = storage.lock().unwrap();
             storage.add_commitment(req.deal_id.clone(), signed_message.clone());
 
             // Debug: verify storage after adding
@@ -95,12 +98,15 @@ pub async fn handle_commitment(
 
 pub async fn handle_proof(
     req: ProofRequest,
-    mut storage: Storage,
+    storage: Arc<Mutex<Storage>>,
 ) -> Result<impl Reply, Infallible> {
     println!("Handling proof request for deal {}", req.deal_id);
 
-    let commitments = match storage.get_commitments(&req.deal_id) {
-        Some(commits) => commits,
+    // First lock storage for reading commitments
+    let storage_guard = storage.lock().unwrap();
+
+    let commitments = match storage_guard.get_commitments(&req.deal_id) {
+        Some(commits) => commits.clone(), // Clone the commits while we have the lock
         None => {
             println!("No commitments found for deal {}", req.deal_id);
             return Ok(json(&ErrorResponse {
@@ -108,6 +114,9 @@ pub async fn handle_proof(
             }));
         }
     };
+
+    // Drop the lock so we don't hold it during proof generation
+    drop(storage_guard);
 
     println!(
         "Found {} commitments for deal {}",
@@ -139,6 +148,8 @@ pub async fn handle_proof(
                 "Proof generated successfully. Verified amount: {}",
                 verified_amount
             );
+            // Get a new mutable lock for storing the proof
+            let mut storage = storage.lock().unwrap();
             storage.add_proof(req.deal_id, receipt);
 
             Ok(json(&ProofResponse {
@@ -158,10 +169,12 @@ pub async fn handle_proof(
 
 pub async fn handle_verify(
     req: VerifyRequest,
-    mut storage: Storage,
+    storage: Arc<Mutex<Storage>>,
 ) -> Result<impl Reply, Infallible> {
     println!("Handling verify request for deal {}", req.deal_id);
 
+    // Lock storage for reading proof
+    let storage = storage.lock().unwrap();
     match storage.get_proof(&req.deal_id) {
         Some(receipt) => {
             println!("Found proof for deal {}", req.deal_id);
