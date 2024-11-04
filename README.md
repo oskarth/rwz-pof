@@ -57,14 +57,11 @@ cargo run --example basic -p rwz-pof-core
 # Dev mode for rapid prototyping
 RISC0_DEV_MODE=true cargo run --example basic -p rwz-pof-core
 
-# Start the API server
-cargo run -p rwz-pof-server
+# Start the API server in development mode
+RISC0_DEV_MODE=true cargo run -p rwz-pof-server
 ```
 
-#### Expected output
-
-From proving:
-
+#### Expected output from proving:
 ```
 Starting proof generation...
 total_cycle_count: 22955819
@@ -75,29 +72,42 @@ Verified amount: 60
 Receipt verification successful!
 ```
 
-### API Endpoints
-Once the server is running (default: http://localhost:3030), you can test with:
+### Testing the API Flow
+
+Once the server is running (default: http://localhost:3030), test the complete flow using these commands:
 
 ```bash
 # 1. Create commitment for LB1 (bank_index = 0)
 curl -X POST http://localhost:3030/lb/commitment \
   -H "Content-Type: application/json" \
-  -d '{"bank_index": 0, "amount": 50}'
+  -d '{"bank_index": 0, "amount": 50}' | json_pp
 
 # 2. Create commitment for LB2 (bank_index = 1)
 curl -X POST http://localhost:3030/lb/commitment \
   -H "Content-Type: application/json" \
-  -d '{"bank_index": 1, "amount": 30}'
+  -d '{"bank_index": 1, "amount": 30}' | json_pp
 
 # 3. Generate proof
 curl -X POST http://localhost:3030/bb/proof \
   -H "Content-Type: application/json" \
-  -d '{"required_amount": 60, "deal_id": "DEAL123"}'
+  -d '{"required_amount": 60, "deal_id": "DEAL123"}' | json_pp
 
 # 4. Verify proof
 curl -X POST http://localhost:3030/sb/verify \
   -H "Content-Type: application/json" \
-  -d '{"deal_id": "DEAL123"}'
+  -d '{"deal_id": "DEAL123"}' | json_pp
+```
+
+Expected successful verification response:
+```json
+{
+   "deal_info" : {
+      "amount" : 50,
+      "buyer" : "buyer123",
+      "deal_id" : "DEAL123"
+   },
+   "verified" : true
+}
 ```
 
 ## Performance notes
@@ -129,6 +139,21 @@ sequenceDiagram
     Note over SB: Verify:<br/>1. Signatures valid<br/>2. LBs authorized<br/>3. Total ≥ required
     SB-->>BB: Verified/Rejected
 ```
+
+## Development Notes
+
+- The server uses in-memory storage for commitments and proofs
+- All endpoints use JSON for request and response bodies
+- Development mode (`RISC0_DEV_MODE=true`) enables faster proving for testing
+- Default deal ID is "DEAL123" if not specified
+- Default buyer is "buyer123" if not specified
+
+## Error Handling
+
+Common error responses:
+- "Not enough commitments for proof generation" - Need at least 2 commitments
+- "No proof found for the deal" - No proof has been generated for the given deal_id
+- "Failed to generate proof" - Proof generation failed (check required amount)
 
 ## TODO
 - Integrate with glue code (e.g. UI); see [PLAN.md](PLAN.md)
