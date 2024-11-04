@@ -94,7 +94,7 @@ pub async fn handle_commitment(
 
 pub async fn handle_proof(
     req: ProofRequest,
-    storage: Storage,
+    mut storage: Storage,
 ) -> Result<impl Reply, Infallible> {
     println!("Handling proof request for deal {}", req.deal_id);
     
@@ -134,7 +134,7 @@ pub async fn handle_proof(
 
 pub async fn handle_verify(
     req: VerifyRequest,
-    storage: Storage,
+    mut storage: Storage,
 ) -> Result<impl Reply, Infallible> {
     println!("Handling verify request for deal {}", req.deal_id);
     

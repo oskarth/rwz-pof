@@ -27,7 +27,7 @@ pub fn create_signed_message(
     };
 
     let message_bytes = bincode::serialize(&deal_info)?;
-    let signature = signing_key.sign(&message_bytes);
+    let signature: k256::ecdsa::Signature = signing_key.sign(&message_bytes);
     let verifying_key = VerifyingKey::from(signing_key);
 
     Ok(SignedMessage {

@@ -5,6 +5,7 @@ edition = "2021"
 
 [dependencies]
 rwz-pof-core = { path = "../core" }
+risc0-zkvm = { version = "1.1.2" }
 warp = "0.3"
 tokio = { version = "1.0", features = ["full"] }
 serde = { version = "1.0", features = ["derive"] }
