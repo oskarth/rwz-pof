@@ -33,21 +33,37 @@ Provide assurance to the S/SB that lending banks within a known network of reput
 
 See [RISC0 Getting Started Guide](https://dev.risczero.com/api/getting-started).
 
-### Testing
+### Project Structure
+- **core/**: Core library containing proof generation and verification logic
+- **methods/**: RISC0 guest methods for zero-knowledge proofs
+- **server/**: HTTP server for API integration
+- **[deprecated] host/**: Original implementation (to be removed)
+
+### Building and Testing
 ```bash
+# Build everything
+cargo build --release
+
+# Run tests
 cargo test --release
 ```
 
-### Running
+### Running Examples
 ```bash
-# Local proving (slower)
-cargo run --release
+# Run the basic example (previously in host)
+# Local proving
+cargo run --example basic -p rwz-pof-core
 
 # Dev mode for rapid prototyping
-RISC0_DEV_MODE=true cargo run --release
+RISC0_DEV_MODE=true cargo run --example basic -p rwz-pof-core
+
+# Start the API server
+cargo run -p rwz-pof-server
 ```
 
-### Expected output
+#### Expected output
+
+From proving:
 
 ```
 Starting proof generation...
@@ -57,6 +73,31 @@ Proof generated successfully!
 Verified deal info: DealInfo { amount: 50, deal_id: "DEAL123", buyer: "buyer123" }
 Verified amount: 60
 Receipt verification successful!
+```
+
+### API Endpoints
+Once the server is running (default: http://localhost:3030), you can test with:
+
+```bash
+# 1. Create commitment for LB1 (bank_index = 0)
+curl -X POST http://localhost:3030/lb/commitment \
+  -H "Content-Type: application/json" \
+  -d '{"bank_index": 0, "amount": 50}'
+
+# 2. Create commitment for LB2 (bank_index = 1)
+curl -X POST http://localhost:3030/lb/commitment \
+  -H "Content-Type: application/json" \
+  -d '{"bank_index": 1, "amount": 30}'
+
+# 3. Generate proof
+curl -X POST http://localhost:3030/bb/proof \
+  -H "Content-Type: application/json" \
+  -d '{"required_amount": 60, "deal_id": "DEAL123"}'
+
+# 4. Verify proof
+curl -X POST http://localhost:3030/sb/verify \
+  -H "Content-Type: application/json" \
+  -d '{"deal_id": "DEAL123"}'
 ```
 
 ## Performance notes
@@ -96,3 +137,8 @@ sequenceDiagram
 - Implement comprehensive testing, error handling, and input validation
 - Experiment with remote proving capabilities
 - Improve performance
+- Add proper error handling to server endpoints
+- Add authentication and authorization
+- Add persistent storage
+- Add concurrent deal support
+- Add frontend UI (see PLAN.md)
