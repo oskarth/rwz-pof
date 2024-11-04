@@ -96,9 +96,14 @@ fn main() {
         proof_amount
     );
 
-    // Commit the verified deal info and proved amount
-    // We'll use LB1's deal info since we verified they match
-    env::commit(&(lb1_signed.message, proof_amount));
+    // Create minimal verification info
+    let verification_info = DealInfo {
+        amount: proof_amount, // Only show required amount (60), not total (80)
+        deal_id: lb1_signed.message.deal_id.clone(),
+        buyer: lb1_signed.message.buyer.clone(),
+    };
+
+    env::commit(&(verification_info, proof_amount));
 
     let end = env::cycle_count();
     eprintln!("total_cycle_count: {}", end - start);
