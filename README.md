@@ -19,62 +19,37 @@ Provide assurance to the SB that lending banks within a known network of reputab
 ## Implementation
 
 ### Core Components
-
-- **Host Program** (host/src/main.rs)
-  - Generates lending bank signatures for commitments
-  - Creates zero-knowledge proofs
-- **Guest Program** (methods/guest/src/main.rs)
-  - Verifies signatures are from authorized banks
-  - Verifies public keys are unique so that signatures cannot be repeated
-  - Validates total committed amount meets requirements
+- **core/**: Core library containing proof generation and verification logic
+- **methods/**: RISC0 guest methods for zero-knowledge proofs
+  - Verifies signatures from authorized banks
+  - Validates unique public keys and total committed amount
   - Commits verified deal info to journal
+- **server/**: HTTP server for API integration with async proof generation
 
-## Development
+### Building and Running
 
 See [RISC0 Getting Started Guide](https://dev.risczero.com/api/getting-started).
 
-### Project Structure
-- **core/**: Core library containing proof generation and verification logic
-- **methods/**: RISC0 guest methods for zero-knowledge proofs
-- **server/**: HTTP server for API integration
-- **[deprecated] host/**: Original implementation (to be removed)
-
-### Building and Testing
 ```bash
 # Build everything
 cargo build --release
 
 # Run tests
 cargo test --release
-```
 
-### Running Examples
-```bash
-# Run the basic example (previously in host)
-# Local proving
+# Run the basic example (without server)
 cargo run --example basic -p rwz-pof-core
 
-# Dev mode for rapid prototyping
+# Run example in dev mode (faster proving)
 RISC0_DEV_MODE=true cargo run --example basic -p rwz-pof-core
 
-# Start the API server in development mode
+# Start API server in development mode (faster proving)
 RISC0_DEV_MODE=true cargo run -p rwz-pof-server
-```
-
-#### Expected output from proving:
-```
-Starting proof generation...
-total_cycle_count: 22955819
-
-Proof generated successfully!
-Verified deal info: DealInfo { amount: 50, deal_id: "DEAL123", buyer: "buyer123" }
-Verified amount: 60
-Receipt verification successful!
 ```
 
 ### Testing the API Flow
 
-Once the server is running (default: http://localhost:3030), test the complete flow using these commands:
+The server supports both synchronous and asynchronous proof generation. The async mode is recommended for production use due to long proving times (~2m on M1 Max).
 
 ```bash
 # 1. Create commitment for LB1 (bank_index = 0)
@@ -93,32 +68,25 @@ curl -X POST http://localhost:3030/bb/proof \
   -H "Content-Type: application/json" \
   -d '{"required_amount": 60, "deal_id": "DEAL123"}' | json_pp
 
-# 4A. Verify proof
-curl -X POST http://localhost:3030/sb/verify \
-  -H "Content-Type: application/json" \
-  -d '{"deal_id": "DEAL123"}' | json_pp
-
 # Option B: Asynchronous Flow
-# Warning: This can take a long time (2m with MBP) for current program
 # 3B. Start async proof generation
 curl -X POST http://localhost:3030/proofs/async \
   -H "Content-Type: application/json" \
   -d '{"required_amount": 60, "deal_id": "DEAL123"}' | json_pp
 
-# 4B. Check job status (replace JOB_ID with the id from previous response)
+# 4B. Check job status (replace JOB_ID with id from previous response)
 curl -X GET http://localhost:3030/proofs/async/JOB_ID | json_pp
 
-# 5B. Verify proof (once status is COMPLETED)
+# 5. Verify proof (for both flows, after completion)
 curl -X POST http://localhost:3030/sb/verify \
   -H "Content-Type: application/json" \
   -d '{"deal_id": "DEAL123"}' | json_pp
 ```
 
-#### Expected responses
+#### Expected Responses
 
-Sync proof verification response:
-
-```
+Proof verification (sync & async final):
+```json
 {
    "deal_info" : {
       "amount" : 50,
@@ -129,9 +97,8 @@ Sync proof verification response:
 }
 ```
 
-Async job status response:
-
-```
+Async job status:
+```json
 {
     "status": "InProgress",
     "created_at": "2024-11-05T02:58:26.768278Z",
@@ -139,9 +106,8 @@ Async job status response:
 }
 ```
 
-When completed, the job status will show:
-
-```
+When completed:
+```json
 {
     "status": "Completed",
     "created_at": "2024-11-05T02:58:26.768278Z",
@@ -157,13 +123,7 @@ When completed, the job status will show:
 }
 ```
 
-## Performance notes
-
-On a MacBook Pro 2021 (M1 Max, 64GB) `cargo run --release` takes ~2m (incl compile). This is without any form of customization or performance work.
-
-Currently total cycle count is ~23M. A secp256k1 signature verification is ~500k cycles (? source needed). Most expensive part is most likely serialization/deserialization.
-
-## Sequence diagram
+## Sequence Diagram
 
 ```mermaid
 sequenceDiagram
@@ -178,39 +138,34 @@ sequenceDiagram
     BB->>LB2: Request signature for amount Y
     LB2-->>BB: Sign(amount=Y, deal_id, buyer)
 
-    Note over BB,ZK: BB runs host program
-    BB->>ZK: Prove(LB1.sig, LB2.sig, total≥Z)
-    ZK-->>BB: proof
+    Note over BB,ZK: BB starts async proof generation
+    BB->>ZK: Create proof job
+    ZK-->>BB: Job ID
+    BB->>ZK: Poll status
+    ZK-->>BB: Status (InProgress/Completed)
 
-    BB->>SB: Submit proof
+    BB->>SB: Submit verified proof
     Note over SB: Verify:<br/>1. Signatures valid<br/>2. LBs authorized<br/>3. Total ≥ required
     SB-->>BB: Verified/Rejected
 ```
 
-## Development Notes
+## Notes & Limitations
+- In-memory storage only (no persistence)
+- All endpoints use JSON for request/response
+- Development mode (`RISC0_DEV_MODE=true`) for faster proving
+- Default values: deal_id="DEAL123", buyer="buyer123"
+- Proof generation takes ~2m on M1 Max
+- Total cycle count ~23M (mostly serialization overhead)
 
-- The server uses in-memory storage for commitments and proofs
-- All endpoints use JSON for request and response bodies
-- Development mode (`RISC0_DEV_MODE=true`) enables faster proving for testing
-- Default deal ID is "DEAL123" if not specified
-- Default buyer is "buyer123" if not specified
-
-## Error Handling
-
-Common error responses:
-- "Not enough commitments for proof generation" - Need at least 2 commitments
-- "No proof found for the deal" - No proof has been generated for the given deal_id
-- "Failed to generate proof" - Proof generation failed (check required amount)
+## Common Errors
+- "Not enough commitments" - Need 2 commitments
+- "No proof found" - Missing/incomplete proof
+- "Failed to generate proof" - Check required amount
 
 ## TODO
-- Integrate with glue code (e.g. UI); see [PLAN.md](PLAN.md)
-- Replace deterministic test keys with separate generation
-- Allow for more than two LBs
-- Implement comprehensive testing, error handling, and input validation
-- Experiment with remote proving capabilities
-- Improve performance
-- Add proper error handling to server endpoints
-- Add authentication and authorization
+- Replace deterministic test keys
+- Support >2 lending banks
 - Add persistent storage
-- Add concurrent deal support
-- Add frontend UI (see PLAN.md)
+- Add authentication/authorization
+- Improve performance
+- Add frontend UI
