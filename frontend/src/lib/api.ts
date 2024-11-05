@@ -82,5 +82,28 @@ export const api = {
 
         if (!response.ok) throw new Error('Failed to verify proof');
         return response.json();
+    },
+
+    // Add sync proof generation
+    async generateProofSync(data: ProofRequest) {
+        const response = await fetch(`${API_BASE_URL}/bb/proof`, {  // Note: using /bb/proof for sync
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(data),
+        });
+
+        if (!response.ok) throw new Error('Failed to generate proof');
+        return response.json();
+    },
+
+    // Add job status check
+    async checkJobStatus(jobId: string) {
+        const response = await fetch(`${API_BASE_URL}/proofs/async/${jobId}`);
+
+        if (!response.ok) throw new Error('Failed to check job status');
+        return response.json();
     }
+
 };
