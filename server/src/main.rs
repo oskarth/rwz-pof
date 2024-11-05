@@ -8,8 +8,17 @@ use handlers::{
 use std::convert::Infallible;
 use std::sync::{Arc, Mutex};
 use storage::Storage;
+use warp::cors::Cors;
 use warp::Filter;
 use worker::ProofWorker;
+
+fn cors() -> Cors {
+    warp::cors()
+        .allow_any_origin()
+        .allow_headers(vec!["Content-Type"])
+        .allow_methods(vec!["GET", "POST", "OPTIONS"])
+        .build()
+}
 
 // Helper functions for warp filters
 fn with_storage(
@@ -83,7 +92,8 @@ async fn main() {
         .or(proof)
         .or(verify)
         .or(create_proof_job)
-        .or(get_proof_job);
+        .or(get_proof_job)
+        .with(cors());
 
     // Start the server
     println!("Server running on http://localhost:3030");
