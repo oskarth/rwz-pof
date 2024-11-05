@@ -25,6 +25,7 @@ Provide assurance to the SB that lending banks within a known network of reputab
   - Validates unique public keys and total committed amount
   - Commits verified deal info to journal
 - **server/**: HTTP server for API integration with async proof generation
+- **frontend/**: Next.js web interface for interacting with the system
 
 ### Building and Running
 
@@ -45,7 +46,14 @@ RISC0_DEV_MODE=true cargo run --example basic -p rwz-pof-core
 
 # Start API server in development mode (faster proving)
 RISC0_DEV_MODE=true cargo run -p rwz-pof-server
+
+# Start frontend development server
+cd frontend
+npm install
+npm run dev
 ```
+
+The frontend will be available at http://localhost:3000. Ensure the backend server is running on port 3030 before using the frontend.
 
 ### Testing the API Flow
 
