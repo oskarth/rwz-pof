@@ -87,19 +87,38 @@ curl -X POST http://localhost:3030/lb/commitment \
   -H "Content-Type: application/json" \
   -d '{"bank_index": 1, "amount": 30}' | json_pp
 
-# 3. Generate proof
+# Option A: Synchronous Flow
+# 3A. Generate proof (synchronous)
 curl -X POST http://localhost:3030/bb/proof \
   -H "Content-Type: application/json" \
   -d '{"required_amount": 60, "deal_id": "DEAL123"}' | json_pp
 
-# 4. Verify proof
+# 4A. Verify proof
+curl -X POST http://localhost:3030/sb/verify \
+  -H "Content-Type: application/json" \
+  -d '{"deal_id": "DEAL123"}' | json_pp
+
+# Option B: Asynchronous Flow
+# Warning: This can take a long time (2m with MBP) for current program
+# 3B. Start async proof generation
+curl -X POST http://localhost:3030/proofs/async \
+  -H "Content-Type: application/json" \
+  -d '{"required_amount": 60, "deal_id": "DEAL123"}' | json_pp
+
+# 4B. Check job status (replace JOB_ID with the id from previous response)
+curl -X GET http://localhost:3030/proofs/async/JOB_ID | json_pp
+
+# 5B. Verify proof (once status is COMPLETED)
 curl -X POST http://localhost:3030/sb/verify \
   -H "Content-Type: application/json" \
   -d '{"deal_id": "DEAL123"}' | json_pp
 ```
 
-Expected successful verification response:
-```json
+#### Expected responses
+
+Sync proof verification response:
+
+```
 {
    "deal_info" : {
       "amount" : 50,
@@ -107,6 +126,34 @@ Expected successful verification response:
       "deal_id" : "DEAL123"
    },
    "verified" : true
+}
+```
+
+Async job status response:
+
+```
+{
+    "status": "InProgress",
+    "created_at": "2024-11-05T02:58:26.768278Z",
+    "updated_at": "2024-11-05T02:58:26.768316Z"
+}
+```
+
+When completed, the job status will show:
+
+```
+{
+    "status": "Completed",
+    "created_at": "2024-11-05T02:58:26.768278Z",
+    "updated_at": "2024-11-05T02:58:30.123456Z",
+    "proof": {
+        "verified": true,
+        "deal_info": {
+            "amount": 50,
+            "buyer": "buyer123",
+            "deal_id": "DEAL123"
+        }
+    }
 }
 ```
 
