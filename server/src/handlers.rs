@@ -1,4 +1,5 @@
 use crate::storage::Storage;
+use crate::worker::ProofWorker;
 use rwz_pof_core::{
     create_signed_message, generate_proof, get_deterministic_signing_key, DealInfo, SignedMessage,
 };
@@ -6,6 +7,9 @@ use serde::{Deserialize, Serialize};
 use std::convert::Infallible;
 use std::sync::{Arc, Mutex};
 use warp::{reply::json, Reply};
+
+use crate::storage::ProofJobStatus;
+use time::OffsetDateTime;
 
 // Request/Response types
 #[derive(Debug, Deserialize)]
@@ -53,6 +57,28 @@ pub struct ProofResponse {
 pub struct VerifyResponse {
     verified: bool,
     deal_info: Option<DealInfo>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct CreateProofJobRequest {
+    deal_id: String,
+    required_amount: u64,
+}
+
+#[derive(Debug, Serialize)]
+pub struct CreateProofJobResponse {
+    job_id: String,
+}
+
+#[derive(Debug, Serialize)]
+pub struct GetProofJobResponse {
+    status: ProofJobStatus,
+    created_at: OffsetDateTime,
+    updated_at: OffsetDateTime,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    proof: Option<ProofResponse>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    error: Option<String>,
 }
 
 // Error responses
@@ -211,5 +237,52 @@ pub async fn handle_verify(
                 error: format!("No proof found for deal {}", req.deal_id),
             }))
         }
+    }
+}
+
+pub async fn handle_create_proof_job(
+    req: CreateProofJobRequest,
+    storage: Arc<Mutex<Storage>>,
+    proof_worker: Arc<ProofWorker>,
+) -> Result<impl Reply, Infallible> {
+    println!("Creating proof job for deal {}", req.deal_id);
+
+    let job = {
+        let mut storage = storage.lock().unwrap();
+        storage.create_proof_job(req.deal_id.clone(), req.required_amount)
+    };
+
+    // Spawn background task to generate proof
+    let storage_clone = Arc::clone(&storage);
+    let job_id = job.id.clone();
+
+    tokio::spawn(async move {
+        proof_worker.process_job(job_id, storage_clone).await;
+    });
+
+    Ok(json(&CreateProofJobResponse { job_id: job.id }))
+}
+
+pub async fn handle_get_proof_job(
+    job_id: String,
+    storage: Arc<Mutex<Storage>>,
+) -> Result<impl Reply, Infallible> {
+    let storage = storage.lock().unwrap();
+
+    match storage.get_proof_job_with_receipt(&job_id) {
+        Some((job, _receipt)) => Ok(json(&GetProofJobResponse {
+            status: job.status.clone(),
+            created_at: job.created_at,
+            updated_at: job.updated_at,
+            proof: job.proof.map(|(deal_info, verified_amount)| ProofResponse {
+                success: true,
+                verified_amount,
+                deal_info,
+            }),
+            error: job.error.clone(),
+        })),
+        None => Ok(json(&ErrorResponse {
+            error: format!("Proof job not found: {}", job_id),
+        })),
     }
 }
