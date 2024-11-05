@@ -6,6 +6,7 @@ use rwz_pof_core::{
 use serde::{Deserialize, Serialize};
 use std::convert::Infallible;
 use std::sync::{Arc, Mutex};
+use time::serde::iso8601;
 use warp::{reply::json, Reply};
 
 use crate::storage::ProofJobStatus;
@@ -73,7 +74,9 @@ pub struct CreateProofJobResponse {
 #[derive(Debug, Serialize)]
 pub struct GetProofJobResponse {
     status: ProofJobStatus,
+    #[serde(with = "iso8601")]
     created_at: OffsetDateTime,
+    #[serde(with = "iso8601")]
     updated_at: OffsetDateTime,
     #[serde(skip_serializing_if = "Option::is_none")]
     proof: Option<ProofResponse>,

@@ -2,6 +2,7 @@ use risc0_zkvm::Receipt;
 use rwz_pof_core::{DealInfo, SignedMessage};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use time::serde::iso8601;
 use time::OffsetDateTime;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -18,7 +19,9 @@ pub struct ProofGenerationJob {
     pub status: ProofJobStatus,
     pub deal_id: String,
     pub required_amount: u64,
+    #[serde(with = "iso8601")]
     pub created_at: OffsetDateTime,
+    #[serde(with = "iso8601")]
     pub updated_at: OffsetDateTime,
     // Only store deal_info and verified_amount in the job
     //     pub proof: Option<(Receipt, DealInfo, u64)>,
