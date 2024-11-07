@@ -2,7 +2,7 @@
 
 A RISC0 ZKVM-based system that provides zero-knowledge verification of lending bank commitments.
 
-Created during [Edge Lanna Hackathon](https://www.edgecity.live/lanna-hackathon) in Chiang Mai, 2024. See [rwz-pof](https://hackmd.io/@ml-sudo/rwz-pof) for more details on the origin of this idea. Also see this [demo video](https://www.youtube.com/watch?v=HoUy5eReWPY) for illustration of the problem and example usage.
+Created during [Edge Lanna Hackathon](https://www.edgecity.live/lanna-hackathon) in Chiang Mai, 2024. See [hackmd](https://hackmd.io/@ml-sudo/rwz-pof) for a non-technical introduction to the problem (suggested for those familiar with M&A). Also see this [demo video](https://www.youtube.com/watch?v=HoUy5eReWPY) for illustration of the problem and example usage.
 
 ## Context
 
