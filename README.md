@@ -2,7 +2,7 @@
 
 A RISC0 ZKVM-based system that provides zero-knowledge verification of lending bank commitments.
 
-See [rwz-pof](https://hackmd.io/@ml-sudo/rwz-pof) for more details on the origin of this idea.
+Created during [Edge Lanna Hackathon](https://www.edgecity.live/lanna-hackathon) in Chiang Mai, 2024. See [rwz-pof](https://hackmd.io/@ml-sudo/rwz-pof) for more details on the origin of this idea. Also see this [demo video](https://www.youtube.com/watch?v=HoUy5eReWPY) for illustration of the problem and example usage.
 
 ## Context
 
