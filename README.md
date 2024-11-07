@@ -2,6 +2,8 @@
 
 A RISC0 ZKVM-based system that provides zero-knowledge verification of lending bank commitments.
 
+See [rwz-pof](https://hackmd.io/@ml-sudo/rwz-pof) for more details on the origin of this idea.
+
 ## Context
 
 In M&A auctions, buyers need to prove to the Seller's Bank (SB) that they have acquired the necessary financing to complete a deal. Traditionally, this involves naming the lending banks that have committed to providing the financing. However, revealing the identities of committed banks can disadvantage the buyer - if SB prefers another buyer who is struggling to secure financing, they could share these bank names with their preferred buyer.
